@@ -15,7 +15,7 @@ def send_to_local_ips(data):
     # Set the socket timeout to 1 second
     sock.settimeout(1)
 
-    # Send the data to each local IP address on port 585
+    # Send the data to each local IP address on port 80
     for ip in local_ips:
         try:
             sock.sendto(data.encode(), (ip, 80))
@@ -26,11 +26,11 @@ def send_to_local_ips(data):
     # Close the socket
     sock.close()
 def receive_from_local_ips():
-    # Create a UDP socket and bind it to port 585
+    # Create a UDP socket and bind it to port 80
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", 80))
 
-    # Set the socket timeout to 1 second
+    # Set the socket timeout to 0.1 seconds
     sock.settimeout(0.1)
 
     # Receive data from the socket
@@ -61,7 +61,7 @@ thread = threading.Thread(target=receive_from_local_ips)
 thread.daemon = True
 thread.start()
 print(f"Hostname: {hostname}")
-print(f"IP Address: {ip_address}")
+print("IP Address:" + ip_address)
 
 # Initialize Pygame
 pygame.init()
@@ -69,7 +69,11 @@ pygame.init()
 # Create the screen
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 ptx = pygame.image.load("player.png").convert()
+health = pygame.image.load("health.png").convert()
+emptyhealth = pygame.image.load("empty.png").convert()
+
 player_pos = [64, 64]
+player_health = 10
 player_size = [TILE_SIZE, TILE_SIZE]
 player_speed = 4
 # Load the textures
@@ -83,19 +87,22 @@ with open('map.dat', 'r') as f:
     map_data = [list(map(int, line.strip())) for line in f.readlines()]
 
 
-
+jtimer=0
 # Create a clock
 clock = pygame.time.Clock()
 input_box = pygame.Rect(0, 0, 0, 0)
 font = pygame.font.Font(None, 16)
 input_text = ''
 solid_tiles=[1]
+deadly_tiles=[2]
 isOpen=False
 # Main game loop
 sus="-"
 d=0
 while True:
-
+    jtimer+=1
+    if jtimer==60:
+        jtimer=0
     # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -164,6 +171,10 @@ while True:
         d=3
     for y, row in enumerate(map_data):
         for x, tile in enumerate(row):
+            if tile in deadly_tiles:
+                tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                if jtimer==0 and player_rect.colliderect(tile_rect):
+                    player_health-=1
             if tile in solid_tiles:
                 tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 while player_rect.colliderect(tile_rect):
@@ -205,6 +216,11 @@ while True:
     text_surface2 = font.render(received_data, True, WHITE)
     screen.blit(text_surface2, (0, 0))
     screen.blit(ptx, (player_pos[0], player_pos[1]))
+    for i in range(10):
+        if player_health>=i:
+            screen.blit(health,(i*12,0))
+        else:
+            screen.blit(emptyhealth,(i*12,0))
     # Update the screen
     pygame.display.update()
     # Limit the framerate

@@ -7,8 +7,15 @@ import threading
 received_data=None
 def send_to_local_ips(data):
     # Get the list of local IP addresses
-    local_ips = [ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")]
-    print(local_ips)
+    local_ips = []
+    
+    for i in range(1,255):
+        temp=ip_address
+        temp=temp.split(".")
+        temp[3]=str(i)
+        temp = ".".join(temp)
+        local_ips.append(temp)
+    #print(local_ips)
     # Create a UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -19,7 +26,7 @@ def send_to_local_ips(data):
     for ip in local_ips:
         try:
             sock.sendto(data.encode(), (ip, 80))
-            print(f"Sent {data} to {ip}:80")
+            #print(f"Sent {data} to {ip}:80")
         except socket.error as e:
             print(f"Failed to send {data} to {ip}:80: {e}")
 
@@ -101,7 +108,7 @@ sus="-"
 d=0
 while True:
     jtimer+=1
-    if jtimer==60:
+    if jtimer==150:
         jtimer=0
     # Handle events
     for event in pygame.event.get():

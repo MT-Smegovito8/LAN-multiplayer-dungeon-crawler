@@ -32,13 +32,16 @@ def send_to_local_ips(data):
 
     # Close the socket
     sock.close()
+
+def sendmovement():
+    send_to_local_ips("~"+str(player_pos[0])+"@"+str(player_pos[1]))
 def receive_from_local_ips():
     # Create a UDP socket and bind it to port 80
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", 80))
 
     # Set the socket timeout to 0.1 seconds
-    sock.settimeout(0.1)
+    sock.settimeout(0.01)
 
     # Receive data from the socket
     try:
@@ -64,9 +67,9 @@ hostname = socket.gethostname()
 ## getting the IP address using socket.gethostbyname() method
 ip_address = socket.gethostbyname(hostname)
 ## printing the hostname and ip_address
-thread = threading.Thread(target=receive_from_local_ips)
-thread.daemon = True
-thread.start()
+#thread = threading.Thread(target=receive_from_local_ips)
+#thread.daemon = True
+#thread.start()
 print(f"Hostname: {hostname}")
 print("IP Address:" + ip_address)
 
@@ -79,6 +82,7 @@ ptx = pygame.image.load("player.png").convert()
 health = pygame.image.load("health.png").convert()
 emptyhealth = pygame.image.load("empty.png").convert()
 
+elist=[[1,128,128]]
 player_pos = [64, 64]
 player_health = 10
 player_size = [TILE_SIZE, TILE_SIZE]
@@ -93,7 +97,7 @@ for i in range(NUM_TEXTURES):
 with open('map.dat', 'r') as f:
     map_data = [list(map(int, line.strip())) for line in f.readlines()]
 
-
+en1=pygame.image.load("enemy.png").convert()
 jtimer=0
 # Create a clock
 clock = pygame.time.Clock()
@@ -166,15 +170,19 @@ while True:
     keys = pygame.key.get_pressed()
     if keys[pygame.K_LEFT]:
         player_pos[0] -= player_speed
+        sendmovement()
         d=0
     elif keys[pygame.K_RIGHT]:
         player_pos[0] += player_speed
+        sendmovement()
         d=1
     elif keys[pygame.K_UP]:
         player_pos[1] -= player_speed
+        sendmovement()
         d=2
     elif keys[pygame.K_DOWN]:
         player_pos[1] += player_speed
+        sendmovement()
         d=3
     for y, row in enumerate(map_data):
         for x, tile in enumerate(row):
@@ -214,15 +222,40 @@ while True:
             if tile < NUM_TEXTURES:
                 texture = textures[tile]
                 screen.blit(texture, (tile_x, tile_y))
+    receive_from_local_ips()
     if received_data is not None:
         jomama=received_data
         print(jomama)
+        if jomama.startswith("~"):
+            jomama = jomama.replace("~", "", 1)
+            if len(jofather)==5:
+                print(jofather.split("@"))
     pygame.draw.rect(screen, BLACK, input_box, 2)
     text_surface = font.render(input_text, True, WHITE)
     screen.blit(text_surface, (input_box.x + 5, input_box.y + 5))
     text_surface2 = font.render(received_data, True, WHITE)
     screen.blit(text_surface2, (0, 0))
     screen.blit(ptx, (player_pos[0], player_pos[1]))
+    for i in elist:
+        screen.blit(en1,(i[1],i[2]))
+        
+        for y, row in enumerate(map_data):
+            for x, tile in enumerate(row):
+                player_rect = pygame.Rect((i[1],i[2]), (64,64))
+                tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, 32, 32)
+                if not tile in solid_tiles:
+                    if player_rect.colliderect(tile_rect):
+                        if jtimer%8==0:
+                            if i[1]>player_pos[0]:
+                                i[1]-=2
+                            else:
+                                i[1]+=2
+                            if i[2]>player_pos[1]:
+                                i[2]-=2
+                            else:
+                                i[2]+=2
+                            break
+
     for i in range(10):
         if player_health>=i:
             screen.blit(health,(i*12,0))

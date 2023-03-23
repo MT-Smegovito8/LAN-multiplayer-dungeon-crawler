@@ -5,7 +5,7 @@ import sys
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 TILE_SIZE = 32
-NUM_TEXTURES = 4
+NUM_TEXTURES = 5
 
 # Define some colors
 BLACK = (0, 0, 0)

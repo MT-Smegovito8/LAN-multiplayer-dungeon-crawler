@@ -4,12 +4,14 @@ import time
 import socket
 import threading
 import random
+import math
 
 # Define some constants
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 TILE_SIZE = 32
 NUM_TEXTURES = 5
+e_NUM_TEXTURES = 1
 
 # Define some colors
 BLACK = (0, 0, 0)
@@ -28,12 +30,17 @@ player_pos = [64, 64]
 player_health = 10
 player_size = [TILE_SIZE, TILE_SIZE]
 player_speed = TILE_SIZE
+etextures=[]
 
 # Load the textures
 textures = []
 for i in range(NUM_TEXTURES):
     texture = pygame.image.load(f'texture{i}.png').convert()
     textures.append(texture)
+for i in range(e_NUM_TEXTURES):
+    etexture = pygame.image.load(f'etx{i}.png').convert()
+    etextures.append(etexture)
+
 poison=pygame.image.load("poison.png").convert()
 fire=pygame.image.load("fire.png").convert()
 battle=pygame.image.load("bg.png").convert()
@@ -51,6 +58,9 @@ clock = pygame.time.Clock()
 solid_tiles=[1]
 deadly_tiles=[2]
 r_enc_tiles=[4]
+enemytypes=[["giant mouse",0,5,2]]
+player_dmg=3
+player_armor=0
 
 isOpen=False
 # Main game loop
@@ -62,6 +72,9 @@ def tick():
     global player_size
     global player_pos
     global inFight
+    global escapefailed
+    global enemyturn
+    global enemy
     #set player collider
     player_rect = pygame.Rect((player_pos[0],player_pos[1]), player_size)
     for y, row in enumerate(map_data): 
@@ -78,6 +91,9 @@ def tick():
                         player_health-=1       
             if tile in r_enc_tiles and player_rect.colliderect(tile_rect) and random.randint(1,4)==2:
                 inFight=True
+                escapefailed=False
+                enemyturn=False
+                enemy=enemytypes[e_NUM_TEXTURES-1]
     jomama=0
     for i in player_effects:
         if i[0]=="poison" and i[1]>=1:
@@ -105,16 +121,47 @@ def overlay():
             screen.blit(emptyhealth,(i*12,0))
     displayeffects()
 inFight=False
+ymod=0
+font = pygame.font.Font('freesansbold.ttf', 32)
 while True:
     if inFight:
+        jtimer+=1
+        if jtimer>=180:
+            jtimer=0
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
                 print("closed")
-        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # Handle mouse clicks
+            x, y = event.pos
+            if y>350:
+                if x>320 and not escapefailed:
+                    if random.randint(1,5)==1:
+                        inFight=False
+                    else:
+                        escapefailed=True
+                        enemyturn=True
+                elif x<320:
+                    enemy[2]-=player_dmg
+                    enemyturn=True
+            if enemyturn:
+                player_health-=enemy[3]-player_armor
+                ymod=40
+                enemyturn=False
+            time.sleep(0.5)
+        if enemy[2]<=0:
+            enemytypes=[["giant mouse",0,5,2]]
+            inFight=False
+        ymod=ymod*0.8
+            
+        text = font.render(str(enemy[2]), True, BLACK)
         screen.fill(BLACK)
         screen.blit(battle, (0,0))
+        screen.blit(etextures[enemy[1]], (340, 100+math.sin(jtimer/4)*ymod*2))
+        screen.blit(text,(340, 100+math.sin(jtimer/4)*ymod*2))
+        screen.blit(ptx,(150,50+math.sin(jtimer)*ymod))
         overlay()
         # Update the screen
         pygame.display.update()
@@ -123,7 +170,7 @@ while True:
     else:
         player_rect = pygame.Rect(player_pos, player_size)
         jtimer+=1
-        if jtimer==50:
+        if jtimer>=50:
             jtimer=0
         # Handle events
         for event in pygame.event.get():

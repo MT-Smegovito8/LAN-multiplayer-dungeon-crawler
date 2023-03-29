@@ -10,12 +10,13 @@ import math
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 TILE_SIZE = 32
-NUM_TEXTURES = 5
+NUM_TEXTURES = 7
 e_NUM_TEXTURES = 1
 
 # Define some colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+oldrender=False
 
 # Initialize Pygame
 pygame.init()
@@ -44,6 +45,7 @@ for i in range(e_NUM_TEXTURES):
 poison=pygame.image.load("poison.png").convert()
 fire=pygame.image.load("fire.png").convert()
 battle=pygame.image.load("bg.png").convert()
+gameover=pygame.image.load("gameover.png").convert()
 
 # Load the map data
 with open('map.dat', 'r') as f:
@@ -61,7 +63,8 @@ r_enc_tiles=[4]
 enemytypes=[["giant mouse",0,5,2]]
 player_dmg=3
 player_armor=0
-
+offx=0
+offy=0
 isOpen=False
 # Main game loop
 d=0
@@ -77,11 +80,21 @@ def tick():
     global enemy
     #set player collider
     player_rect = pygame.Rect((player_pos[0],player_pos[1]), player_size)
-    for y, row in enumerate(map_data): 
+    for y, row in enumerate(map_data):
+        if y*TILE_SIZE+offy<0:
+            continue
+        if y*TILE_SIZE+offy>480:
+            break
         for x, tile in enumerate(row): #loop through every tile
+            if x*TILE_SIZE+offx<0:
+                continue
+            if x*TILE_SIZE+offx>640:
+                break
             tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
             if tile==3 and player_rect.colliderect(tile_rect):
                 player_effects[0]=["fire",0]
+            if tile==6 and player_rect.colliderect(tile_rect):
+                player_effects[1]=["poison",player_effects[1][1]+3]            
             if tile in deadly_tiles:
                 tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 if player_rect.colliderect(tile_rect):
@@ -123,6 +136,11 @@ def overlay():
 inFight=False
 ymod=0
 font = pygame.font.Font('freesansbold.ttf', 32)
+xx=[]
+yy=[]
+for i in range(72):
+    xx.append(math.sin(i*5))
+    yy.append(math.cos(i*5))
 while True:
     if inFight:
         jtimer+=1
@@ -180,37 +198,58 @@ while True:
                 print("closed")
         keys = pygame.key.get_pressed()
         if jtimer%5==0:
-            for i in range(player_speed):
+            for i in range(1):
                 if keys[pygame.K_LEFT]:
-                    player_pos[0] -= 1
+                    player_pos[0] -= player_speed
                     d=0
                 elif keys[pygame.K_RIGHT]:
-                    player_pos[0] += 1
+                    player_pos[0] += player_speed
                     d=1
                 elif keys[pygame.K_UP]:
-                    player_pos[1] -= 1
+                    player_pos[1] -= player_speed
                     d=2
                 elif keys[pygame.K_DOWN]:
-                    player_pos[1] += 1
+                    player_pos[1] += player_speed
                     d=3
+                
+                if keys[pygame.K_a]:
+                    offx-=player_speed
+                elif keys[pygame.K_d]:
+                    offx+=player_speed
+                elif keys[pygame.K_w]:
+                    offy+=player_speed
+                elif keys[pygame.K_s]:
+                    offy-=player_speed
+                
                 for y, row in enumerate(map_data):
+                    tile_y = y * TILE_SIZE
+                    if tile_y+offy>480:
+                        break
+                    if tile_y+offy<0:
+                        continue
                     for x, tile in enumerate(row):
+                        tile_x=x*TILE_SIZE
+                        if tile_x+offx>640:
+                            break
+                        if tile_x+offx<0:
+                            continue
+                        player_rect = pygame.Rect([player_pos[0]+offx,player_pos[1]+offy], player_size)
                         if tile in solid_tiles:
                             tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                             while player_rect.colliderect(tile_rect):
                                 # Undo the player movement
-                                player_rect = pygame.Rect(player_pos, player_size)
+                                player_rect = pygame.Rect([player_pos[0]+offx,player_pos[1]+offy], player_size)
                                 if not player_rect.colliderect(tile_rect):
                                         break
                                 if d==0:
-                                    player_pos[0] += 1
+                                    player_pos[0] += player_speed
                                 elif d==1:
-                                    player_pos[0] -= 1
+                                    player_pos[0] -= player_speed
                                 elif d==2:
-                                    player_pos[1] += 1
+                                    player_pos[1] += player_speed
                                 elif d==3:
-                                    player_pos[1] -= 1
-                                player_rect = pygame.Rect(player_pos, player_size)
+                                    player_pos[1] -= player_speed
+                                player_rect = pygame.Rect([player_pos[0]+offx,player_pos[1]+offy], player_size)
                                 if not player_rect.colliderect(tile_rect):
                                     break
             if keys[pygame.K_DOWN] or keys[pygame.K_UP] or keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]:
@@ -218,19 +257,66 @@ while True:
     
         # Clear the screen
         screen.fill(BLACK)
-    
-        # Draw the map
-        for y, row in enumerate(map_data):
-            for x, tile in enumerate(row):
-                # Calculate the tile position
-                tile_x = x * TILE_SIZE
-                tile_y = y * TILE_SIZE
-                # Draw the tile
-                if tile < NUM_TEXTURES:
-                    texture = textures[tile]
-                    screen.blit(texture, (tile_x, tile_y))
-        screen.blit(ptx, (player_pos[0], player_pos[1]))
-        overlay()
+        if player_health>0:
+            # Draw the map
+            if oldrender:
+                for y, row in enumerate(map_data):
+                    tile_y = y * TILE_SIZE
+                    if tile_y+offy>480:
+                        break
+                    if tile_y+offy<0:
+                        continue
+                    for x, tile in enumerate(row):
+                        tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                        # Calculate the tile position
+                        tile_x = x * TILE_SIZE + offx
+                        tile_y = y * TILE_SIZE + offy
+                        # Draw the tile
+                        if tile < NUM_TEXTURES:
+                            sxp=player_pos[0]
+                            syp=player_pos[1]
+                            for sus in range(36):
+                                xa=xx[sus]
+                                ya=yy[sus]
+                                for i2 in range(10):
+                                    sxp=sxp+xa
+                                    syp=syp+ya
+                                    vrect = pygame.Rect((sxp,syp), (2,2))
+                                    pygame.draw.rect(screen, WHITE, vrect,2)
+                                    #pygame.display.flip()
+                                    if vrect.colliderect(tile_rect):                            
+                                        texture = textures[tile]
+                                        screen.blit(texture, (tile_x, tile_y))
+                                        if tile in solid_tiles:
+                                            break
+                        if tile_x+offx>640 or tile_x+offx<0:
+                            continue
+            else:
+
+                for sus in range(72):
+                    xa=xx[sus]
+                    ya=yy[sus]
+                    sxp=player_pos[0]+offx
+                    syp=player_pos[1]+offy
+                    for i2 in range(100):
+                        sxp=sxp+xa*2
+                        syp=syp+ya*2
+                        mx=int(sxp//TILE_SIZE)
+                        my=int(syp//TILE_SIZE)
+                        tile=map_data[my+offy//64][mx+offx//64]
+                        tile_rect = pygame.Rect(sxp//TILE_SIZE,syp//TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                        vrect = pygame.Rect((mx,my), (4,4))
+                        pygame.draw.rect(screen, WHITE, vrect,2)
+                        #pygame.display.flip()
+                        if vrect.colliderect(tile_rect):                            
+                            texture = textures[tile]
+                            screen.blit(texture, (mx*TILE_SIZE, my*TILE_SIZE))
+                            if tile in solid_tiles:
+                                break
+            screen.blit(ptx, [player_pos[0]+offx,player_pos[1]+offy])
+            overlay()
+        else:
+            screen.blit(gameover,(0,0))
         # Update the screen
         pygame.display.update()
         # Limit the framerate

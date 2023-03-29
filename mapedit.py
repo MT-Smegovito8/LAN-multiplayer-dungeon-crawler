@@ -1,11 +1,12 @@
 import pygame
 import sys
+import time
 
 # Define some constants
 SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 TILE_SIZE = 32
-NUM_TEXTURES = 5
+NUM_TEXTURES = 7
 
 # Define some colors
 BLACK = (0, 0, 0)
@@ -26,11 +27,15 @@ with open('map.dat', 'r') as f:
     for line in f.readlines():
         row = list(map(int, line.strip()))
         map_data.append(row)
-if len(map_data)!=15:
-    map_data=[]
-    jomama=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    for i in range(15):
-        map_data.append(jomama)
+jomama=[]
+for i in range(2560):
+    jomama.append(0)
+if len(map_data)!=2560:
+    print("Map data corrupted! Do you want to clear the map? ")
+    if input()=="y":
+        map_data=[]
+        for i in range(2560):
+            map_data.append(jomama)
 # Initialize Pygame
 
 
@@ -44,7 +49,8 @@ font = pygame.font.SysFont(None, 30)
 current_tile = 0
 custom_event = pygame.USEREVENT + 1
 pygame.time.set_timer(custom_event, 10)
-
+offx=0
+offy=0
 # Main game loop
 while True:
 
@@ -68,8 +74,8 @@ while True:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             # Handle mouse clicks
             x, y = event.pos
-            tile_x = x // TILE_SIZE
-            tile_y = y // TILE_SIZE
+            tile_x = (x - offx) // TILE_SIZE
+            tile_y = (y - offy) // TILE_SIZE
             if tile_x >= 0 and tile_x < len(map_data[0]) and tile_y >= 0 and tile_y < len(map_data):
                 map_data[tile_y][tile_x] = current_tile
         elif event.type == pygame.KEYDOWN:
@@ -78,13 +84,23 @@ while True:
                 current_tile += 1
             elif event.key == pygame.K_1 and current_tile!=0:
                 current_tile -= 1
-            
+            elif event.key == pygame.K_UP:
+                offy+=TILE_SIZE
+            elif event.key == pygame.K_DOWN:
+                offy-=TILE_SIZE
+            elif event.key == pygame.K_LEFT:
+                offx+=TILE_SIZE
+            elif event.key == pygame.K_RIGHT:
+                offx-=TILE_SIZE
 
     # Clear the screen
     screen.fill(BLACK)
 
     # Draw the map
     for y, row in enumerate(map_data):
+        tile_y=y*TILE_SIZE
+        if tile_y+offy>480 or tile_y+offy<0:
+            continue
         for x, tile in enumerate(row):
             # Calculate the tile position
             tile_x = x * TILE_SIZE
@@ -92,7 +108,9 @@ while True:
             # Draw the tile
             if tile < NUM_TEXTURES:
                 texture = textures[tile]
-                screen.blit(texture, (tile_x, tile_y))
+                screen.blit(texture, (tile_x+offx, tile_y+offy))
+            if tile_x+offx>640 or tile_x+offx<0:
+                continue
 
     # Draw the current tile type
     tile_text = font.render(f'Current Tile: {current_tile}', True, WHITE)
